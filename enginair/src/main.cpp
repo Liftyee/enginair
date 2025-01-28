@@ -1,5 +1,5 @@
 // enginair main.cpp
-// Read PM, CO2, Temperature and humidity from SEN50 and SCD40 sensors.
+// Read Particulate matter (PM), CO2, Temperature and humidity from SEN50 and SCD40 sensors.
 // Display on an SSD1306 128x32 OLED.
 
 #include <Arduino.h>
@@ -11,6 +11,10 @@
 SensirionI2CSen5x pmSens;
 SensirionI2CScd4x co2Sens;
 
+// TODO: figure out how to pass in a TwoWire pointer
+void initSEN50();
+void initSCD40();
+
 void setup() {
     Serial.begin(115200);
     while (!Serial) {
@@ -21,27 +25,17 @@ void setup() {
     Wire.setSDA(16);
     Wire.begin();
 
-    delay(100);
-    pmSens.begin(Wire);
-    delay(100);
+    /* **************************** */
+    // Initialise PM sensor (SEN50)
+    /* **************************** */
+    initSEN50();
 
-    uint16_t error;
-    char message[256];
-    error = pmSens.deviceReset();
-    if (error) {
-        Serial.print("Error resetting SEN50: ");
-        errorToString(error, message, 256);
-        Serial.println(message);
-    } 
+    /* **************************** */
+    // Initialise CO2 sensor (SCD40)
+    /* **************************** */
+    initSCD40();
 
-    error = pmSens.startMeasurement();
-    if (error) {
-        Serial.print("Error starting SEN50 measurement: ");
-        errorToString(error, message, 256);
-        Serial.println(message);
-    } else {
-        Serial.println("SEN50 measurement started successfully");
-    }
+    Serial.println("Starting main loop");
 }
 
 void loop() {
@@ -68,5 +62,79 @@ void loop() {
         Serial.println();
 
         // SEN50 has no VOC, NOx, humidity or temperature sensor.
+    }
+
+    // The SCD40 CO2 sensor only produces a new measurement every 5 seconds, 
+    // and clears the buffer after reading, so check if data is ready
+    uint16_t co2 = 0;
+    bool dataReady = false;
+    error = co2Sens.getDataReadyFlag(dataReady);
+    if (error) {
+        Serial.print("Couldn't get SCD40 data ready flag: ");
+        errorToString(error, errorMessage, 256);
+        Serial.println(errorMessage);
+        return; // Don't do anything after this if an error occurred at this stage
+    }
+    
+    if (dataReady) {
+        error = co2Sens.readMeasurement(co2, temp, humi);
+        if (error) {
+            Serial.print("Error reading SCD40 measurement: ");
+            errorToString(error, errorMessage, 256);
+            Serial.println(errorMessage);
+        } else {
+            Serial.print("CO2: ");
+            Serial.print(co2);
+            Serial.print("\t Temperature: ");
+            Serial.print(temp);
+            Serial.print("\t Humidity: ");
+            Serial.print(humi);
+            Serial.println();
+        }
+    }
+}
+
+void initSEN50() {
+    pmSens.begin(Wire);
+
+    uint16_t error;
+    char message[256];
+    error = pmSens.deviceReset();
+    if (error) {
+        Serial.print("Error resetting SEN50: ");
+        errorToString(error, message, 256);
+        Serial.println(message);
+    } 
+
+    error = pmSens.startMeasurement();
+    if (error) {
+        Serial.print("Error starting SEN50 measurement: ");
+        errorToString(error, message, 256);
+        Serial.println(message);
+    } else {
+        Serial.println("SEN50 measurement started successfully");
+    }
+}
+
+void initSCD40() {
+    co2Sens.begin(Wire);
+
+    // A measurement might be running from a previous startup
+    uint16_t error;
+    char message[256];
+    error = co2Sens.stopPeriodicMeasurement();
+    if (error) {
+        Serial.print("Error stopping SCD40 measurement: ");
+        errorToString(error, message, 256);
+        Serial.println(message);
+    }
+
+    error = co2Sens.startPeriodicMeasurement();
+    if (error) {
+        Serial.print("Error starting SCD40 measurement: ");
+        errorToString(error, message, 256);
+        Serial.println(message);
+    } else {
+        Serial.println("SCD40 measurement started successfully");
     }
 }
