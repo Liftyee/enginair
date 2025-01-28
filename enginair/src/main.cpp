@@ -4,9 +4,15 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+#include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <SensirionI2CSen5x.h>
 #include <SensirionI2CScd4x.h>
+
+#define DISPLAY_WIDTH 128
+#define DISPLAY_HEIGHT 32
+#define DISPLAY_ADDRESS 0x3C
+Adafruit_SSD1306 display(DISPLAY_WIDTH, DISPLAY_HEIGHT, &Wire, -1); // -1: no reset pin
 
 SensirionI2CSen5x pmSens;
 SensirionI2CScd4x co2Sens;
@@ -14,6 +20,7 @@ SensirionI2CScd4x co2Sens;
 // TODO: figure out how to pass in a TwoWire pointer
 void initSEN50();
 void initSCD40();
+bool initDisplay();
 
 void setup() {
     Serial.begin(115200);
@@ -25,15 +32,9 @@ void setup() {
     Wire.setSDA(16);
     Wire.begin();
 
-    /* **************************** */
-    // Initialise PM sensor (SEN50)
-    /* **************************** */
-    initSEN50();
-
-    /* **************************** */
-    // Initialise CO2 sensor (SCD40)
-    /* **************************** */
-    initSCD40();
+    initSEN50(); // PM sensor init
+    initSCD40(); // CO2 sensor init
+    initDisplay(); // OLED display init
 
     Serial.println("Starting main loop");
 }
@@ -137,4 +138,19 @@ void initSCD40() {
     } else {
         Serial.println("SCD40 measurement started successfully");
     }
+}
+
+bool initDisplay() {
+    if(!display.begin(SSD1306_SWITCHCAPVCC, DISPLAY_ADDRESS)) {
+        Serial.println(F("Couldn't initialise SSD1306"));
+        return false;
+    }
+
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0, 0);
+    display.println("enginAIR starting...");
+    display.display();
+
+    return true;
 }
