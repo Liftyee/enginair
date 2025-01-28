@@ -13,6 +13,8 @@
 #define DISPLAY_HEIGHT 32
 #define DISPLAY_ADDRESS 0x3C
 Adafruit_SSD1306 display(DISPLAY_WIDTH, DISPLAY_HEIGHT, &Wire, -1); // -1: no reset pin
+// #include <Fonts/FreeSans9pt7b.h> // TODO: Convert Meshtastic font ArialMT_Plain_10 to Adafruit GFX font
+// Meshtastic FONT_MEDIUM = ArialMT_Plain_16, FONT_SMALL = ArialMT_Plain_10
 
 SensirionI2CSen5x pmSens;
 SensirionI2CScd4x co2Sens;
@@ -20,22 +22,37 @@ SensirionI2CScd4x co2Sens;
 // TODO: figure out how to pass in a TwoWire pointer
 void initSEN50();
 void initSCD40();
+
+#define PROJECT_NAME "enginAIR"
+enum message_t {
+    DEBUG,
+    NAME,
+    INFO,
+    WARN,
+    ERR
+};
+
 bool initDisplay();
+void showMessage(String message, message_t level);
 
 void setup() {
-    Serial.begin(115200);
-    while (!Serial) {
-        delay(100);
-    }
-
     Wire.setSCL(17);
     Wire.setSDA(16);
     Wire.begin();
 
+    initDisplay(); // OLED display init early, so we can show a message
+    Serial.begin(115200);
+
+    showMessage("Waiting for serial", NAME);
+    while (!Serial) {
+        delay(100);
+    }
+    showMessage("Connected", NAME);
+
     initSEN50(); // PM sensor init
     initSCD40(); // CO2 sensor init
-    initDisplay(); // OLED display init
 
+    showMessage("Init complete", NAME);
     Serial.println("Starting main loop");
 }
 
@@ -147,10 +164,52 @@ bool initDisplay() {
     }
 
     display.setTextSize(1);
+    // TODO: Uncomment when font fixed
+    //display.setFont(&FreeSans9pt7b);
     display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0, 0);
-    display.println("enginAIR starting...");
+    display.setCursor(0, 20);
+    display.println("display init...");
     display.display();
 
     return true;
+}
+
+// Display a short message on the OLED display (and Serial) with a "log level"
+void showMessage(String message, message_t level) {
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(0,0);
+    
+    switch (level) {
+        case DEBUG:
+            display.println("DEBUG: ");
+            Serial.print("DEBUG: ");
+            break;
+        case INFO:
+            display.println("INFO: ");
+            Serial.print("INFO: ");
+            break;
+        case WARN:
+            display.println("WARN: ");
+            Serial.print("WARN: ");
+            break;
+        case ERR:
+            display.println("ERROR: ");
+            Serial.print("ERROR: ");
+            break;
+        case NAME:
+            display.print(PROJECT_NAME);
+            display.println(": ");
+            Serial.print(PROJECT_NAME);
+            Serial.print(": ");
+            break;
+        default:
+            display.println("(no msg type): ");
+    }
+
+    display.println(message);
+    display.display();
+
+    // print to serial, for good measure
+    Serial.println(message);
 }
