@@ -6,6 +6,7 @@
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include "symbols.h"
 #include <SensirionI2CSen5x.h>
 #include <SensirionI2CScd4x.h>
 
@@ -49,6 +50,7 @@ void setup() {
     showMessage("Waiting for serial", NAME);
     while (!Serial) {
         delay(100);
+        break; // don't wait 
     }
     showMessage("Connected", NAME);
 
@@ -228,11 +230,12 @@ void showPMValues(float pm1p0, float pm2p5, float pm4p0, float pm10p0) {
 
     // Only show PM2.5 and PM10 for brevity
     display.clearDisplay();
-    display.setCursor(0,0);
-    display.print("PM2.5: ");
+    display.setCursor(16,0);
+    display.drawBitmap(0, 0, icon_pm25, 16, 7, SSD1306_WHITE);
     display.print(pm2p5);
     display.println(" ug/m3");
-    display.print("PM10: ");
+    display.setCursor(16, 10);
+    display.drawBitmap(0, 10, icon_pm10, 16, 7, SSD1306_WHITE);
     display.print(pm10p0);
     display.print(" ug/m3");
     display.display();
