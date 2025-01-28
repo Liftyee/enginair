@@ -14,7 +14,7 @@
 #define DISPLAY_HEIGHT 32
 #define DISPLAY_ADDRESS 0x3C
 Adafruit_SSD1306 display(DISPLAY_WIDTH, DISPLAY_HEIGHT, &Wire, -1); // -1: no reset pin
-// #include <Fonts/FreeSans9pt7b.h> // TODO: Convert Meshtastic font ArialMT_Plain_10 to Adafruit GFX font
+#include <Fonts/FreeSans9pt7b.h> // TODO: Convert Meshtastic font ArialMT_Plain_10 to Adafruit GFX font
 // Meshtastic FONT_MEDIUM = ArialMT_Plain_16, FONT_SMALL = ArialMT_Plain_10
 
 SensirionI2CSen5x pmSens;
@@ -38,6 +38,7 @@ bool initDisplay();
 void showMessage(String message, message_t level);
 void showPMValues(float pm1p0, float pm2p5, float pm4p0, float pm10p0);
 void showCO2Values(uint16_t co2, float temp, float humi);
+void showValues_LargeText(float pm2p5, uint16_t co2, float temp, float humi);
 
 void setup() {
     Wire.setSCL(17);
@@ -101,12 +102,13 @@ void loop() {
         }
     }
 
-    // Swap between the CO2 and PM values every 5 seconds
-    if (seconds > 5) {
-        showCO2Values(co2, temp, humi);
-    } else {
-        showPMValues(pm1p0, pm2p5, pm4p0, pm10p0);
-    }
+    // // Swap between the CO2 and PM values every 5 seconds
+    // if (seconds > 5) {
+    //     showCO2Values(co2, temp, humi);
+    // } else {
+    //     showPMValues(pm1p0, pm2p5, pm4p0, pm10p0);
+    // }
+    showValues_LargeText(pm2p5, co2, temp, humi);
 
     if (seconds >= 10) {
         seconds = 0;
@@ -214,6 +216,40 @@ void showMessage(String message, message_t level) {
 
     // print to serial, for good measure
     Serial.println(message);
+}
+
+#define BOTLINE_Y 29
+#define TOPLINE_Y 14
+#define RIGHTHALF_X 64
+void showValues_LargeText(float pm2p5, uint16_t co2, float temp, float humi) {
+    int x, y; // temp vars
+    display.clearDisplay();
+    display.setFont(&FreeSans9pt7b);
+    display.setTextSize(1);
+    display.setCursor(0,TOPLINE_Y);
+    display.print(String(pm2p5, 1));
+
+    display.setFont(); // reset to default font
+    x = display.getCursorX();
+    display.drawBitmap(x+2, 0, icon_ugm3, 16, 16, SSD1306_WHITE);
+
+    display.setFont(&FreeSans9pt7b);
+    display.setCursor(RIGHTHALF_X, TOPLINE_Y);
+    display.print(co2);
+    display.setFont();
+    display.setCursor(display.getCursorX()+1, display.getCursorY());
+    display.print("ppm");
+
+    display.setFont(&FreeSans9pt7b);
+    display.setCursor(0, BOTLINE_Y);
+    display.print(String(temp, 1));
+    x = display.getCursorX();
+    y = display.getCursorY();
+    display.drawBitmap(x+1, y-10, icon_degC, 8, 7, SSD1306_WHITE);
+    display.setCursor(RIGHTHALF_X, BOTLINE_Y);
+    display.print(String(humi, 1));
+    display.print("%");
+    display.display();
 }
 
 // Show the PM values on the OLED and serial monitor
